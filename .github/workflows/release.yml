@@ -50,8 +50,8 @@ jobs:
           ## Что нового в версии ${{ github.ref_name }}
           
           ### Изменения:
-          - Автоматическая сборка debug-версии
-          - Упрощенный процесс релиза
+          - Автоматическая сборка и публикация
+          - Улучшенная система обновлений
           
           ### Установка:
           1. Скачайте APK файл
@@ -59,7 +59,7 @@ jobs:
           3. Установите приложение
           
           ### Примечание:
-          Это debug-версия приложения для тестирования обновлений.
+          Это стабильная версия приложения.
         draft: false
         prerelease: false
         
@@ -70,5 +70,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./app/build/outputs/apk/debug/app-debug.apk
-        asset_name: CZp-${{ github.ref_name }}-debug.apk
+        asset_name: CZp-${{ github.ref_name }}.apk
         asset_content_type: application/vnd.android.package-archive 
