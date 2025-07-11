@@ -19,25 +19,32 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/*.gradle.kts') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
     - name: Grant execute permission for gradlew
-      run: chmod +x ./gradlew
+      run: chmod +x gradlew
       
-    - name: Build APK
-      run: ./gradlew assembleRelease
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
       
-    - name: Sign APK
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/czp-release-key.jks
-        echo "czp2024release" > keystore_password.txt
-        echo "czp-key" > key_alias.txt
-        echo "czp2024release" > key_password.txt
+    - name: Upload APK to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./app/build/outputs/apk/debug/app-debug.apk
+        asset_name: CZp-${{ github.ref_name }}-debug.apk
+        asset_content_type: application/vnd.android.package-archive
         
-        ./gradlew assembleRelease \
-          -Pandroid.injected.signing.store.file=app/czp-release-key.jks \
-          -Pandroid.injected.signing.store.password=czp2024release \
-          -Pandroid.injected.signing.key.alias=czp-key \
-          -Pandroid.injected.signing.key.password=czp2024release
-      
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -45,34 +52,20 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: CZP ${{ github.ref_name }}
+        release_name: CZp ${{ github.ref_name }}
         body: |
           ## Что нового в версии ${{ github.ref_name }}
           
-          ### 🚀 Новые возможности
-          - Автоматические обновления
-          - Улучшенная система сохранения данных
+          ### Изменения:
+          - Автоматическая сборка debug-версии
+          - Упрощенный процесс релиза
           
-          ### 🐛 Исправления
-          - Исправлена проблема с сохранением в release-сборке
-          
-          ### 📱 Установка
-          1. Скачайте APK файл ниже
+          ### Установка:
+          1. Скачайте APK файл
           2. Разрешите установку из неизвестных источников
           3. Установите приложение
           
-          ### 📝 Примечания
-          - Приложение автоматически проверит наличие обновлений
-          - Все данные сохраняются локально на устройстве
+          ### Примечание:
+          Это debug-версия приложения для тестирования обновлений.
         draft: false
-        prerelease: false
-        
-    - name: Upload APK
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./app/build/outputs/apk/release/app-release.apk
-        asset_name: CZP-${{ github.ref_name }}.apk
-        asset_content_type: application/vnd.android.package-archive 
+        prerelease: false 
