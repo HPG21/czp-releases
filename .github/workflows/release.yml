@@ -66,10 +66,10 @@ jobs:
         
     - name: Upload APK to Release
       run: |
+        cp ./app/build/outputs/apk/debug/app-debug.apk ./CZp-${{ github.ref_name }}.apk
         gh release upload ${{ github.ref_name }} \
-          ./app/build/outputs/apk/debug/app-debug.apk \
+          ./CZp-${{ github.ref_name }}.apk \
           --repo ${{ github.repository }} \
-          --clobber \
-          --name "CZp-${{ github.ref_name }}.apk"
+          --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
