@@ -12,10 +12,19 @@ android {
         applicationId = "com.depotect.czp"
         minSdk = 27
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.9.7"
+        versionCode = 31
+        versionName = "1.9.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -25,6 +34,7 @@ android {
             // Используем тот же applicationId для debug и release
             applicationIdSuffix = ""
             versionNameSuffix = ""
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
