@@ -51,7 +51,12 @@ class UpdateManager(private val context: Context) {
             // Парсим версию из tag_name (например, "v1.5" -> 1.5)
             val newVersionCode = parseVersionCode(release.tagName)
             
+            android.util.Log.d("CZP_UPDATE", "Current version code: $currentVersionCode")
+            android.util.Log.d("CZP_UPDATE", "Latest release tag: ${release.tagName}")
+            android.util.Log.d("CZP_UPDATE", "Parsed new version code: $newVersionCode")
+            
             if (newVersionCode > currentVersionCode) {
+                android.util.Log.d("CZP_UPDATE", "Update available! New version is higher")
                 val apkAsset = release.assets.find { it.name.endsWith(".apk") }
                 if (apkAsset != null) {
                     val updateInfo = UpdateInfo(
@@ -65,13 +70,18 @@ class UpdateManager(private val context: Context) {
                     
                     _updateState.value = UpdateState.UpdateAvailable(updateInfo)
                     return updateInfo
+                } else {
+                    android.util.Log.w("CZP_UPDATE", "No APK asset found in release")
                 }
+            } else {
+                android.util.Log.d("CZP_UPDATE", "No update available. Current: $currentVersionCode, Latest: $newVersionCode")
             }
             
             _updateState.value = UpdateState.NoUpdateAvailable
             return null
             
         } catch (e: Exception) {
+            android.util.Log.e("CZP_UPDATE", "Error checking updates", e)
             _updateState.value = UpdateState.Error("Ошибка проверки обновлений: ${e.message}")
             return null
         }
@@ -140,12 +150,11 @@ class UpdateManager(private val context: Context) {
         return try {
             // Убираем "v" из начала и парсим версию
             val version = tagName.removePrefix("v").split(".")
-            if (version.size >= 2) {
-                val major = version[0].toInt()
-                val minor = version[1].toInt()
-                major * 100 + minor
-            } else {
-                0
+            when (version.size) {
+                1 -> version[0].toInt() * 10000 // major.0.0
+                2 -> version[0].toInt() * 10000 + version[1].toInt() * 100 // major.minor.0
+                3 -> version[0].toInt() * 10000 + version[1].toInt() * 100 + version[2].toInt() // major.minor.patch
+                else -> 0
             }
         } catch (e: Exception) {
             0

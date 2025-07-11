@@ -568,8 +568,10 @@ fun MainApp() {
     // Наблюдаем за состоянием обновлений
     LaunchedEffect(Unit) {
         updateManager.updateState.collect { state ->
+            android.util.Log.d("CZP_UPDATE", "Update state changed: $state")
             updateState = state
             if (state is UpdateState.UpdateAvailable || state is UpdateState.NoUpdateAvailable) {
+                android.util.Log.d("CZP_UPDATE", "Showing update dialog for state: $state")
                 showUpdateDialog = true
             }
         }
