@@ -28,6 +28,7 @@ class UpdateManager(private val context: Context) {
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .addHeader("User-Agent", UpdateConfig.USER_AGENT)
+                    .addHeader("Accept", "application/vnd.github.v3+json")
                     .build()
                 chain.proceed(request)
             }
@@ -86,7 +87,20 @@ class UpdateManager(private val context: Context) {
             
         } catch (e: Exception) {
             android.util.Log.e("CZP_UPDATE", "Error checking updates", e)
-            _updateState.value = UpdateState.Error("Ошибка проверки обновлений: ${e.message}")
+            val errorMessage = when (e) {
+                is retrofit2.HttpException -> {
+                    when (e.code()) {
+                        403 -> "Ошибка доступа к GitHub API. Попробуйте позже."
+                        404 -> "Репозиторий с обновлениями не найден."
+                        429 -> "Слишком много запросов. Попробуйте позже."
+                        else -> "Ошибка сети: ${e.code()}"
+                    }
+                }
+                is java.net.UnknownHostException -> "Нет подключения к интернету"
+                is java.net.SocketTimeoutException -> "Превышено время ожидания"
+                else -> "Ошибка проверки обновлений: ${e.message}"
+            }
+            _updateState.value = UpdateState.Error(errorMessage)
             return null
         }
     }

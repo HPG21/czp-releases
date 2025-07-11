@@ -14,5 +14,5 @@ object UpdateConfig {
     const val GITHUB_OWNER = "HPG21"
     const val GITHUB_REPO = "czp-releases"
     const val BASE_URL = "https://api.github.com/"
-    const val USER_AGENT = "CZP-Update-Checker/1.0"
+    const val USER_AGENT = "Mozilla/5.0 (Android) CZP-Update-Checker/1.0"
 } 
