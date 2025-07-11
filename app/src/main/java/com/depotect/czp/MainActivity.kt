@@ -713,7 +713,7 @@ fun CalculatorScreen(
                 enter = fadeIn(animationSpec = tween(1000)) + expandVertically(),
                 modifier = Modifier.animateContentSize()
             ) {
-                Text(
+    Text(
                     text = "Калькулятор зарплаты",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
@@ -2201,7 +2201,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "CZp v1.9.3",
+                    text = "CZp v1.9.4",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
