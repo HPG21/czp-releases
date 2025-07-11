@@ -35,22 +35,8 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
-    - name: Create stable debug keystore
-      run: |
-        echo "Creating debug keystore..."
-        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-        echo "Debug keystore created successfully"
-        ls -la debug.keystore
-        cp debug.keystore app/
-        echo "Debug keystore copied to app directory"
-        ls -la app/debug.keystore
-      
     - name: Build Debug APK
-      run: |
-        echo "Building APK..."
-        ./gradlew assembleDebug --info
-        echo "APK built successfully"
-        ls -la app/build/outputs/apk/debug/
+      run: ./gradlew assembleDebug
       
     - name: Create Release
       run: |
