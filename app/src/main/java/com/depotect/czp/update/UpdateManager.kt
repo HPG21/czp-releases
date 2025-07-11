@@ -181,21 +181,35 @@ class UpdateManager(private val context: Context) {
     
     private fun isNewerVersion(newVersion: String, currentVersion: String): Boolean {
         return try {
-            val newParts = newVersion.split(".").map { it.toInt() }
-            val currentParts = currentVersion.split(".").map { it.toInt() }
+            // Убираем суффиксы типа -debug, -release и т.д.
+            val cleanNewVersion = newVersion.split("-")[0]
+            val cleanCurrentVersion = currentVersion.split("-")[0]
+            
+            val newParts = cleanNewVersion.split(".").map { it.toInt() }
+            val currentParts = cleanCurrentVersion.split(".").map { it.toInt() }
             
             // Дополняем до 3 частей если нужно
             val newNormalized = newParts + List(maxOf(0, 3 - newParts.size)) { 0 }
             val currentNormalized = currentParts + List(maxOf(0, 3 - currentParts.size)) { 0 }
             
+            android.util.Log.d("CZP_UPDATE", "Comparing versions: $cleanCurrentVersion vs $cleanNewVersion")
+            android.util.Log.d("CZP_UPDATE", "Normalized: $currentNormalized vs $newNormalized")
+            
             // Сравниваем по частям
             for (i in 0..2) {
-                if (newNormalized[i] > currentNormalized[i]) return true
-                if (newNormalized[i] < currentNormalized[i]) return false
+                if (newNormalized[i] > currentNormalized[i]) {
+                    android.util.Log.d("CZP_UPDATE", "New version is higher at position $i")
+                    return true
+                }
+                if (newNormalized[i] < currentNormalized[i]) {
+                    android.util.Log.d("CZP_UPDATE", "Current version is higher at position $i")
+                    return false
+                }
             }
+            android.util.Log.d("CZP_UPDATE", "Versions are equal")
             false // версии равны
         } catch (e: Exception) {
-            android.util.Log.e("CZP_UPDATE", "Error comparing versions", e)
+            android.util.Log.e("CZP_UPDATE", "Error comparing versions: $newVersion vs $currentVersion", e)
             false
         }
     }
