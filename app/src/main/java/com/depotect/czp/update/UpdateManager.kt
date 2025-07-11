@@ -108,14 +108,18 @@ class UpdateManager(private val context: Context) {
     suspend fun downloadUpdate(updateInfo: UpdateInfo): File? {
         try {
             // Сразу устанавливаем состояние загрузки
+            android.util.Log.d("CZP_UPDATE", "Starting download process")
             _updateState.value = UpdateState.Downloading(0)
+            
+            // Принудительная задержка для показа начального состояния
+            kotlinx.coroutines.delay(100)
             
             val downloadDir = File(context.externalCacheDir, "updates")
             if (!downloadDir.exists()) {
                 downloadDir.mkdirs()
             }
             
-            val apkFile = File(downloadDir, "czp-update-${updateInfo.versionName}.apk")
+            val apkFile = File(downloadDir, "czp-update-${updateInfo.versionName.replace(" ", "-").replace("CZp", "czp")}.apk")
             
             android.util.Log.d("CZP_UPDATE", "Starting download to: ${apkFile.absolutePath}")
             
@@ -127,6 +131,10 @@ class UpdateManager(private val context: Context) {
             
             android.util.Log.d("CZP_UPDATE", "Total bytes to download: $totalBytes")
             
+            // Обновляем прогресс каждые 5% или каждые 100KB
+            val progressUpdateThreshold = maxOf(totalBytes / 20, 102400L) // 5% или 100KB
+            var lastProgressUpdate = 0L
+            
             FileOutputStream(apkFile).use { output ->
                 body.byteStream().use { input ->
                     val buffer = ByteArray(8192)
@@ -136,17 +144,25 @@ class UpdateManager(private val context: Context) {
                         output.write(buffer, 0, bytesRead)
                         downloadedBytes += bytesRead
                         
-                        val progress = ((downloadedBytes * 100) / totalBytes).toInt()
-                        android.util.Log.d("CZP_UPDATE", "Download progress: $progress% ($downloadedBytes/$totalBytes)")
-                        _updateState.value = UpdateState.Downloading(progress)
-                        
-                        // Небольшая задержка для обновления UI
-                        kotlinx.coroutines.delay(50)
+                        // Обновляем прогресс только при значительном изменении
+                        if (downloadedBytes - lastProgressUpdate >= progressUpdateThreshold) {
+                            val progress = ((downloadedBytes * 100) / totalBytes).toInt()
+                            android.util.Log.d("CZP_UPDATE", "Download progress: $progress% ($downloadedBytes/$totalBytes)")
+                            _updateState.value = UpdateState.Downloading(progress)
+                            lastProgressUpdate = downloadedBytes
+                            
+                            // Небольшая задержка для обновления UI
+                            kotlinx.coroutines.delay(50)
+                        }
                     }
                 }
             }
             
+            // Финальное обновление прогресса
             android.util.Log.d("CZP_UPDATE", "Download completed: ${apkFile.absolutePath}")
+            _updateState.value = UpdateState.Downloading(100)
+            kotlinx.coroutines.delay(200) // Показываем 100% на секунду
+            
             _updateState.value = UpdateState.DownloadComplete(apkFile)
             return apkFile
             
