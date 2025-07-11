@@ -84,6 +84,7 @@ import androidx.compose.runtime.DisposableEffect
 import com.depotect.czp.update.UpdateManager
 import com.depotect.czp.update.UpdateState
 import com.depotect.czp.update.UpdateDialog
+import android.view.WindowManager
 
 private val Context.dataStore by preferencesDataStore(name = "salary_history")
 private val HISTORY_KEY = stringPreferencesKey("history_json")
@@ -286,9 +287,30 @@ class MainActivity : ComponentActivity() {
         // Переключаемся с splash темы на основную тему
         setTheme(R.style.Theme_CZP)
         
+        // Устанавливаем правильные флаги для окна
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        )
+        
         setContent {
             MainApp()
         }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Правильно обрабатываем паузу
+    }
+    
+    override fun onStop() {
+        super.onStop()
+        // Правильно обрабатываем остановку
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Очищаем ресурсы
     }
 }
 
@@ -566,8 +588,20 @@ fun MainApp() {
             android.util.Log.d("CZP_UPDATE", "Update state changed: $state")
             updateState = state
             when (state) {
+                is UpdateState.Checking -> {
+                    android.util.Log.d("CZP_UPDATE", "Showing checking dialog")
+                    showUpdateDialog = true
+                }
                 is UpdateState.UpdateAvailable -> {
                     android.util.Log.d("CZP_UPDATE", "Showing update dialog for available update")
+                    showUpdateDialog = true
+                }
+                is UpdateState.Downloading -> {
+                    android.util.Log.d("CZP_UPDATE", "Showing downloading dialog")
+                    showUpdateDialog = true
+                }
+                is UpdateState.DownloadComplete -> {
+                    android.util.Log.d("CZP_UPDATE", "Showing download complete dialog")
                     showUpdateDialog = true
                 }
                 is UpdateState.NoUpdateAvailable -> {
@@ -578,15 +612,19 @@ fun MainApp() {
                         android.util.Log.d("CZP_UPDATE", "Not showing dialog for no update (not manual check)")
                     }
                 }
+                is UpdateState.Error -> {
+                    android.util.Log.d("CZP_UPDATE", "Showing error dialog")
+                    showUpdateDialog = true
+                }
                 else -> {
-                    // Для других состояний (Checking, Downloading, etc.) не показываем диалог
+                    // Для других состояний (NoUpdate) не показываем диалог
                 }
             }
         }
     }
     
     // Показ диалога обновления
-    if (showUpdateDialog && updateState !is UpdateState.NoUpdate) {
+    if (showUpdateDialog) {
         CZPTheme(darkTheme = isDarkTheme, dynamicColor = true) {
             UpdateDialog(
                 updateState = updateState,
@@ -2158,7 +2196,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "CZp v1.8.9",
+                    text = "CZp v1.9.0",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary

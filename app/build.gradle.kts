@@ -12,8 +12,8 @@ android {
         applicationId = "com.depotect.czp"
         minSdk = 27
         targetSdk = 36
-        versionCode = 22
-        versionName = "1.8.9"
+        versionCode = 23
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -22,6 +22,8 @@ android {
         debug {
             isMinifyEnabled = false
             isShrinkResources = false
+            // Используем тот же applicationId для debug и release
+            applicationIdSuffix = ""
         }
         release {
             isMinifyEnabled = true
