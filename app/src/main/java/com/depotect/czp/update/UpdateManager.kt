@@ -46,22 +46,26 @@ class UpdateManager(private val context: Context) {
             _updateState.value = UpdateState.Checking
             
             val release = api.getLatestRelease()
-            val currentVersionCode = context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val currentVersionName = packageInfo.versionName ?: "1.0.0"
+            val currentVersionCode = packageInfo.longVersionCode.toInt()
             
-            // Парсим версию из tag_name (например, "v1.5" -> 1.5)
-            val newVersionCode = parseVersionCode(release.tagName)
+            // Парсим версию из tag_name (например, "v1.8.3" -> "1.8.3")
+            val newVersionName = release.tagName.removePrefix("v")
             
+            android.util.Log.d("CZP_UPDATE", "Current version name: $currentVersionName")
             android.util.Log.d("CZP_UPDATE", "Current version code: $currentVersionCode")
             android.util.Log.d("CZP_UPDATE", "Latest release tag: ${release.tagName}")
-            android.util.Log.d("CZP_UPDATE", "Parsed new version code: $newVersionCode")
+            android.util.Log.d("CZP_UPDATE", "New version name: $newVersionName")
             
-            if (newVersionCode > currentVersionCode) {
+            // Сравниваем версии по имени (более точно)
+            if (isNewerVersion(newVersionName, currentVersionName)) {
                 android.util.Log.d("CZP_UPDATE", "Update available! New version is higher")
                 val apkAsset = release.assets.find { it.name.endsWith(".apk") }
                 if (apkAsset != null) {
                     val updateInfo = UpdateInfo(
                         versionName = release.name,
-                        versionCode = newVersionCode,
+                        versionCode = parseVersionCode(release.tagName),
                         downloadUrl = apkAsset.downloadUrl,
                         releaseNotes = release.body,
                         fileSize = apkAsset.size,
@@ -74,7 +78,7 @@ class UpdateManager(private val context: Context) {
                     android.util.Log.w("CZP_UPDATE", "No APK asset found in release")
                 }
             } else {
-                android.util.Log.d("CZP_UPDATE", "No update available. Current: $currentVersionCode, Latest: $newVersionCode")
+                android.util.Log.d("CZP_UPDATE", "No update available. Current: $currentVersionName, Latest: $newVersionName")
             }
             
             _updateState.value = UpdateState.NoUpdateAvailable
@@ -158,6 +162,27 @@ class UpdateManager(private val context: Context) {
             }
         } catch (e: Exception) {
             0
+        }
+    }
+    
+    private fun isNewerVersion(newVersion: String, currentVersion: String): Boolean {
+        return try {
+            val newParts = newVersion.split(".").map { it.toInt() }
+            val currentParts = currentVersion.split(".").map { it.toInt() }
+            
+            // Дополняем до 3 частей если нужно
+            val newNormalized = newParts + List(maxOf(0, 3 - newParts.size)) { 0 }
+            val currentNormalized = currentParts + List(maxOf(0, 3 - currentParts.size)) { 0 }
+            
+            // Сравниваем по частям
+            for (i in 0..2) {
+                if (newNormalized[i] > currentNormalized[i]) return true
+                if (newNormalized[i] < currentNormalized[i]) return false
+            }
+            false // версии равны
+        } catch (e: Exception) {
+            android.util.Log.e("CZP_UPDATE", "Error comparing versions", e)
+            false
         }
     }
     
