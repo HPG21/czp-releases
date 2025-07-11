@@ -148,7 +148,7 @@ fun UpdateDialog(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(
-                            progress = updateState.progress / 100f,
+                            progress = { updateState.progress / 100f },
                             modifier = Modifier.size(64.dp)
                         )
                         
@@ -168,6 +168,14 @@ fun UpdateDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { /* Ничего не делаем */ },
+                        enabled = false
+                    ) {
+                        Text("Загрузка...")
                     }
                 }
             )

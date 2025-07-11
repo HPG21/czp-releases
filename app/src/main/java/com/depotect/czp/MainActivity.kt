@@ -588,8 +588,9 @@ fun MainApp() {
                 },
                 onDownload = {
                     scope.launch {
-                        if (updateState is UpdateState.UpdateAvailable) {
-                            updateManager.downloadUpdate(updateState.updateInfo)
+                        val currentState = updateState
+                        if (currentState is UpdateState.UpdateAvailable) {
+                            updateManager.downloadUpdate(currentState.updateInfo)
                         }
                     }
                 },
