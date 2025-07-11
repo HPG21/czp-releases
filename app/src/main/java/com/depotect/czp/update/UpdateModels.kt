@@ -41,6 +41,7 @@ data class UpdateInfo(
 sealed class UpdateState {
     object Checking : UpdateState()
     object NoUpdate : UpdateState()
+    object NoUpdateAvailable : UpdateState()
     data class UpdateAvailable(val updateInfo: UpdateInfo) : UpdateState()
     data class Downloading(val progress: Int) : UpdateState()
     data class DownloadComplete(val file: java.io.File) : UpdateState()

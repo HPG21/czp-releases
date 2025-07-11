@@ -68,7 +68,7 @@ class UpdateManager(private val context: Context) {
                 }
             }
             
-            _updateState.value = UpdateState.NoUpdate
+            _updateState.value = UpdateState.NoUpdateAvailable
             return null
             
         } catch (e: Exception) {

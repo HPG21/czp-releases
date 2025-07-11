@@ -569,7 +569,7 @@ fun MainApp() {
     LaunchedEffect(Unit) {
         updateManager.updateState.collect { state ->
             updateState = state
-            if (state is UpdateState.UpdateAvailable) {
+            if (state is UpdateState.UpdateAvailable || state is UpdateState.NoUpdateAvailable) {
                 showUpdateDialog = true
             }
         }

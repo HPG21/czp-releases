@@ -1,5 +1,6 @@
 package com.depotect.czp.update
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -138,22 +139,38 @@ fun UpdateDialog(
             AlertDialog(
                 onDismissRequest = { /* Нельзя закрыть во время загрузки */ },
                 title = {
-                    Text(
-                        text = "Загрузка обновления",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Загрузка обновления",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 },
                 text = {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(
+                        // Прогресс бар
+                        LinearProgressIndicator(
                             progress = { updateState.progress / 100f },
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
+                        // Процент загрузки
                         Text(
                             text = "${updateState.progress}%",
                             style = MaterialTheme.typography.headlineSmall,
@@ -163,11 +180,47 @@ fun UpdateDialog(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
+                        // Статус загрузки
                         Text(
-                            text = "Загружаем обновление...",
+                            text = when {
+                                updateState.progress < 25 -> "Подготовка к загрузке..."
+                                updateState.progress < 50 -> "Загружаем файл..."
+                                updateState.progress < 75 -> "Почти готово..."
+                                updateState.progress < 100 -> "Завершение..."
+                                else -> "Загрузка завершена"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Анимированные точки
+                        Row(
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            repeat(3) { index ->
+                                val delay = index * 200
+                                val infiniteTransition = rememberInfiniteTransition(label = "dots")
+                                val alpha by infiniteTransition.animateFloat(
+                                    initialValue = 0.3f,
+                                    targetValue = 1f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(600, delayMillis = delay),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "dot$index"
+                                )
+                                
+                                Text(
+                                    text = "•",
+                                    fontSize = 24.sp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                )
+                            }
+                        }
                     }
                 },
                 confirmButton = {
@@ -234,6 +287,58 @@ fun UpdateDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Установить")
+                    }
+                }
+            )
+        }
+        
+        is UpdateState.NoUpdateAvailable -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Обновлений нет",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "У вас установлена последняя версия приложения",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "Проверьте обновления позже",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("Ок")
                     }
                 }
             )
