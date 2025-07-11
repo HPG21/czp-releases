@@ -12,8 +12,8 @@ android {
         applicationId = "com.depotect.czp"
         minSdk = 27
         targetSdk = 36
-        versionCode = 16
-        versionName = "1.8.3"
+        versionCode = 17
+        versionName = "1.8.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -22,7 +22,6 @@ android {
         debug {
             isMinifyEnabled = false
             isShrinkResources = false
-            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
