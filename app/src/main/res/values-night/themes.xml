@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Темная тема приложения -->
+    <style name="Theme.CZP" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <!-- Темная тема для splash screen -->
+    <style name="Theme.CZP.Splash" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+    </style>
+</resources> 

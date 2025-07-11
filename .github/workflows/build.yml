@@ -1,0 +1,78 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./gradlew
+      
+    - name: Build APK
+      run: ./gradlew assembleRelease
+      
+    - name: Sign APK
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/czp-release-key.jks
+        echo "czp2024release" > keystore_password.txt
+        echo "czp-key" > key_alias.txt
+        echo "czp2024release" > key_password.txt
+        
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=app/czp-release-key.jks \
+          -Pandroid.injected.signing.store.password=czp2024release \
+          -Pandroid.injected.signing.key.alias=czp-key \
+          -Pandroid.injected.signing.key.password=czp2024release
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: CZP ${{ github.ref_name }}
+        body: |
+          ## Что нового в версии ${{ github.ref_name }}
+          
+          ### 🚀 Новые возможности
+          - Автоматические обновления
+          - Улучшенная система сохранения данных
+          
+          ### 🐛 Исправления
+          - Исправлена проблема с сохранением в release-сборке
+          
+          ### 📱 Установка
+          1. Скачайте APK файл ниже
+          2. Разрешите установку из неизвестных источников
+          3. Установите приложение
+          
+          ### 📝 Примечания
+          - Приложение автоматически проверит наличие обновлений
+          - Все данные сохраняются локально на устройстве
+        draft: false
+        prerelease: false
+        
+    - name: Upload APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./app/build/outputs/apk/release/app-release.apk
+        asset_name: CZP-${{ github.ref_name }}.apk
+        asset_content_type: application/vnd.android.package-archive 
