@@ -335,6 +335,7 @@ fun MainApp() {
     // Состояние для системы обновлений
     var updateState by remember { mutableStateOf<UpdateState>(UpdateState.NoUpdate) }
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var isManualUpdateCheck by remember { mutableStateOf(false) }
     val updateManager = remember { UpdateManager(context) }
 
     // Загрузка истории и настроек при первом запуске
@@ -363,15 +364,8 @@ fun MainApp() {
                 android.util.Log.d("CZP", "First launch check completed: $isFirst")
             }
             
-            // Проверяем обновления при запуске
-            try {
-                val updateInfo = updateManager.checkForUpdates()
-                if (updateInfo != null) {
-                    showUpdateDialog = true
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CZP", "Error checking updates on startup", e)
-            }
+            // Убираем автоматическую проверку обновлений при запуске
+            // Теперь обновления проверяются только при ручном нажатии в настройках
             
         } catch (e: Exception) {
             android.util.Log.e("CZP", "Error during initial load", e)
@@ -518,6 +512,7 @@ fun MainApp() {
                         taxRate = taxRate,
                         onTaxRateChange = { taxRate = it },
                         onCheckUpdates = {
+                            isManualUpdateCheck = true
                             scope.launch {
                                 updateManager.checkForUpdates()
                             }
@@ -570,9 +565,22 @@ fun MainApp() {
         updateManager.updateState.collect { state ->
             android.util.Log.d("CZP_UPDATE", "Update state changed: $state")
             updateState = state
-            if (state is UpdateState.UpdateAvailable || state is UpdateState.NoUpdateAvailable) {
-                android.util.Log.d("CZP_UPDATE", "Showing update dialog for state: $state")
-                showUpdateDialog = true
+            when (state) {
+                is UpdateState.UpdateAvailable -> {
+                    android.util.Log.d("CZP_UPDATE", "Showing update dialog for available update")
+                    showUpdateDialog = true
+                }
+                is UpdateState.NoUpdateAvailable -> {
+                    if (isManualUpdateCheck) {
+                        android.util.Log.d("CZP_UPDATE", "Showing update dialog for no update (manual check)")
+                        showUpdateDialog = true
+                    } else {
+                        android.util.Log.d("CZP_UPDATE", "Not showing dialog for no update (not manual check)")
+                    }
+                }
+                else -> {
+                    // Для других состояний (Checking, Downloading, etc.) не показываем диалог
+                }
             }
         }
     }
@@ -582,7 +590,10 @@ fun MainApp() {
         CZPTheme(darkTheme = isDarkTheme, dynamicColor = true) {
             UpdateDialog(
                 updateState = updateState,
-                onDismiss = { showUpdateDialog = false },
+                onDismiss = { 
+                    showUpdateDialog = false
+                    isManualUpdateCheck = false
+                },
                 onUpdate = {
                     scope.launch {
                         updateManager.checkForUpdates()
@@ -599,6 +610,7 @@ fun MainApp() {
                 onInstall = { file ->
                     updateManager.installUpdate(file)
                     showUpdateDialog = false
+                    isManualUpdateCheck = false
                 }
             )
         }
@@ -2146,7 +2158,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "CZp v1.8.5",
+                    text = "CZp v1.8.6",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
