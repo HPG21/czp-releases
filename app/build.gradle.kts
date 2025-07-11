@@ -12,8 +12,8 @@ android {
         applicationId = "com.depotect.czp"
         minSdk = 27
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.9.1"
+        versionCode = 25
+        versionName = "1.9.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -24,10 +24,13 @@ android {
             isShrinkResources = false
             // Используем тот же applicationId для debug и release
             applicationIdSuffix = ""
+            versionNameSuffix = ""
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            applicationIdSuffix = ""
+            versionNameSuffix = ""
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

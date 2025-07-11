@@ -597,7 +597,7 @@ fun MainApp() {
                     showUpdateDialog = true
                 }
                 is UpdateState.Downloading -> {
-                    android.util.Log.d("CZP_UPDATE", "Showing downloading dialog")
+                    android.util.Log.d("CZP_UPDATE", "Showing downloading dialog with progress: ${state.progress}%")
                     showUpdateDialog = true
                 }
                 is UpdateState.DownloadComplete -> {
@@ -613,11 +613,11 @@ fun MainApp() {
                     }
                 }
                 is UpdateState.Error -> {
-                    android.util.Log.d("CZP_UPDATE", "Showing error dialog")
+                    android.util.Log.d("CZP_UPDATE", "Showing error dialog: ${state.message}")
                     showUpdateDialog = true
                 }
                 else -> {
-                    // Для других состояний (NoUpdate) не показываем диалог
+                    android.util.Log.d("CZP_UPDATE", "NoUpdate state - not showing dialog")
                 }
             }
         }
@@ -625,19 +625,23 @@ fun MainApp() {
     
     // Показ диалога обновления
     if (showUpdateDialog) {
+        android.util.Log.d("CZP_UPDATE", "Rendering UpdateDialog with state: $updateState")
         CZPTheme(darkTheme = isDarkTheme, dynamicColor = true) {
             UpdateDialog(
                 updateState = updateState,
                 onDismiss = { 
+                    android.util.Log.d("CZP_UPDATE", "UpdateDialog dismissed")
                     showUpdateDialog = false
                     isManualUpdateCheck = false
                 },
                 onUpdate = {
+                    android.util.Log.d("CZP_UPDATE", "UpdateDialog onUpdate called")
                     scope.launch {
                         updateManager.checkForUpdates()
                     }
                 },
                 onDownload = {
+                    android.util.Log.d("CZP_UPDATE", "UpdateDialog onDownload called")
                     scope.launch {
                         val currentState = updateState
                         if (currentState is UpdateState.UpdateAvailable) {
@@ -646,6 +650,7 @@ fun MainApp() {
                     }
                 },
                 onInstall = { file ->
+                    android.util.Log.d("CZP_UPDATE", "UpdateDialog onInstall called with file: ${file.absolutePath}")
                     updateManager.installUpdate(file)
                     showUpdateDialog = false
                     isManualUpdateCheck = false
@@ -2196,7 +2201,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "CZp v1.9.1",
+                    text = "CZp v1.9.2",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary

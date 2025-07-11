@@ -107,6 +107,9 @@ class UpdateManager(private val context: Context) {
     
     suspend fun downloadUpdate(updateInfo: UpdateInfo): File? {
         try {
+            // Сразу устанавливаем состояние загрузки
+            _updateState.value = UpdateState.Downloading(0)
+            
             val downloadDir = File(context.externalCacheDir, "updates")
             if (!downloadDir.exists()) {
                 downloadDir.mkdirs()
@@ -114,11 +117,15 @@ class UpdateManager(private val context: Context) {
             
             val apkFile = File(downloadDir, "czp-update-${updateInfo.versionName}.apk")
             
+            android.util.Log.d("CZP_UPDATE", "Starting download to: ${apkFile.absolutePath}")
+            
             val response = api.downloadApk(updateInfo.downloadUrl)
             val body = response.body() ?: throw IOException("Пустой ответ")
             
             val totalBytes = body.contentLength()
             var downloadedBytes = 0L
+            
+            android.util.Log.d("CZP_UPDATE", "Total bytes to download: $totalBytes")
             
             FileOutputStream(apkFile).use { output ->
                 body.byteStream().use { input ->
@@ -130,15 +137,21 @@ class UpdateManager(private val context: Context) {
                         downloadedBytes += bytesRead
                         
                         val progress = ((downloadedBytes * 100) / totalBytes).toInt()
+                        android.util.Log.d("CZP_UPDATE", "Download progress: $progress% ($downloadedBytes/$totalBytes)")
                         _updateState.value = UpdateState.Downloading(progress)
+                        
+                        // Небольшая задержка для обновления UI
+                        kotlinx.coroutines.delay(50)
                     }
                 }
             }
             
+            android.util.Log.d("CZP_UPDATE", "Download completed: ${apkFile.absolutePath}")
             _updateState.value = UpdateState.DownloadComplete(apkFile)
             return apkFile
             
         } catch (e: Exception) {
+            android.util.Log.e("CZP_UPDATE", "Download error", e)
             _updateState.value = UpdateState.Error("Ошибка загрузки: ${e.message}")
             return null
         }
