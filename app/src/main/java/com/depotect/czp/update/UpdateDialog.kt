@@ -102,11 +102,8 @@ fun UpdateDialog(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        Text(
-                            text = updateState.updateInfo.releaseNotes,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // Красивый чейнджлог
+                        FormattedChangelog(changelog = updateState.updateInfo.releaseNotes)
                     }
                 },
                 confirmButton = {
@@ -387,6 +384,160 @@ fun UpdateDialog(
             // NoUpdate - ничего не показываем
         }
     }
+}
+
+@Composable
+fun FormattedChangelog(changelog: String) {
+    val sections = parseChangelog(changelog)
+    
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        sections.forEach { section ->
+            when (section) {
+                is ChangelogSection.Header -> {
+                    Text(
+                        text = section.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+                    )
+                }
+                is ChangelogSection.SubHeader -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = section.icon,
+                            contentDescription = null,
+                            tint = section.color,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = section.text,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = section.color
+                        )
+                    }
+                }
+                is ChangelogSection.Item -> {
+                    Row(
+                        modifier = Modifier.padding(start = 24.dp, top = 2.dp, bottom = 2.dp)
+                    ) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = section.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                is ChangelogSection.Text -> {
+                    Text(
+                        text = section.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+sealed class ChangelogSection {
+    data class Header(val text: String) : ChangelogSection()
+    data class SubHeader(val text: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val color: androidx.compose.ui.graphics.Color) : ChangelogSection()
+    data class Item(val text: String) : ChangelogSection()
+    data class Text(val text: String) : ChangelogSection()
+}
+
+fun parseChangelog(changelog: String): List<ChangelogSection> {
+    val sections = mutableListOf<ChangelogSection>()
+    val lines = changelog.split("\n")
+    
+    var i = 0
+    while (i < lines.size) {
+        val line = lines[i].trim()
+        
+        when {
+            // Заголовки (## или ###)
+            line.startsWith("## ") -> {
+                sections.add(ChangelogSection.Header(line.substring(3)))
+            }
+            line.startsWith("### ") -> {
+                sections.add(ChangelogSection.Header(line.substring(4)))
+            }
+            // Подзаголовки с эмодзи
+            line.contains("🎯") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("🎯", "").trim(),
+                    Icons.Default.Star,
+                    androidx.compose.ui.graphics.Color(0xFFFFD700)
+                ))
+            }
+            line.contains("📊") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("📊", "").trim(),
+                    Icons.Default.Analytics,
+                    androidx.compose.ui.graphics.Color(0xFF2196F3)
+                ))
+            }
+            line.contains("📱") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("📱", "").trim(),
+                    Icons.Default.Phone,
+                    androidx.compose.ui.graphics.Color(0xFF4CAF50)
+                ))
+            }
+            line.contains("⚙️") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("⚙️", "").trim(),
+                    Icons.Default.Settings,
+                    androidx.compose.ui.graphics.Color(0xFF9C27B0)
+                ))
+            }
+            line.contains("🔧") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("🔧", "").trim(),
+                    Icons.Default.Build,
+                    androidx.compose.ui.graphics.Color(0xFFFF9800)
+                ))
+            }
+            line.contains("🐛") -> {
+                sections.add(ChangelogSection.SubHeader(
+                    line.replace("🐛", "").trim(),
+                    Icons.Default.BugReport,
+                    androidx.compose.ui.graphics.Color(0xFFF44336)
+                ))
+            }
+            // Элементы списка
+            line.startsWith("- ") -> {
+                sections.add(ChangelogSection.Item(line.substring(2)))
+            }
+            line.startsWith("• ") -> {
+                sections.add(ChangelogSection.Item(line.substring(2)))
+            }
+            // Обычный текст
+            line.isNotEmpty() -> {
+                sections.add(ChangelogSection.Text(line))
+            }
+        }
+        
+        i++
+    }
+    
+    return sections
 }
 
 private fun formatFileSize(bytes: Long): String {
