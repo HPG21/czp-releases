@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -537,6 +538,67 @@ fun HistoryDetailDialog(
                     color = com.depotect.czp.ui.theme.AccentOrange,
                     unit = "₽"
                 )
+                // СЕКЦИЯ СВЕРХУРОЧНЫХ
+                if (calculation.overtimeHoursTotal > 0.0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Text(
+                        text = "Сверхурочные",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ResultRow(
+                        label = "Всего сверхурочных часов",
+                        value = calculation.overtimeHoursTotal,
+                        icon = Icons.Default.Timer,
+                        color = MaterialTheme.colorScheme.primary,
+                        unit = "ч"
+                    )
+                    if (calculation.overtimeHours05 > 0.0) {
+                        ResultRow(
+                            label = "Из них с доплатой 0.5",
+                            value = calculation.overtimeHours05,
+                            icon = Icons.Default.Timer,
+                            color = com.depotect.czp.ui.theme.AccentOrange,
+                            unit = "ч"
+                        )
+                        ResultRow(
+                            label = "Выплата за 0.5 (50%)",
+                            value = calculation.overtimePay05,
+                            icon = Icons.Default.Money,
+                            color = com.depotect.czp.ui.theme.AccentOrange,
+                            unit = "₽"
+                        )
+                    }
+                    if (calculation.overtimeHours10 > 0.0) {
+                        ResultRow(
+                            label = "Из них с доплатой 1.0",
+                            value = calculation.overtimeHours10,
+                            icon = Icons.Default.Timer,
+                            color = com.depotect.czp.ui.theme.SuccessGreen,
+                            unit = "ч"
+                        )
+                        ResultRow(
+                            label = "Выплата за 1.0 (100%)",
+                            value = calculation.overtimePay10,
+                            icon = Icons.Default.Money,
+                            color = com.depotect.czp.ui.theme.SuccessGreen,
+                            unit = "₽"
+                        )
+                    }
+                    ResultRow(
+                        label = "Базовая выплата за сверхурочные",
+                        value = calculation.overtimePayBase,
+                        icon = Icons.Default.Money,
+                        color = MaterialTheme.colorScheme.primary,
+                        unit = "₽"
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(
@@ -620,7 +682,8 @@ fun EditCalculationDialog(
     calculation: SalaryCalculation,
     onDismiss: () -> Unit,
     onSave: (SalaryCalculation) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    allowSpecialHoursExceedWorkHours: Boolean = false
 ) {
     var quarterlyHours by remember { mutableStateOf(calculation.quarterlyHours.toString()) }
     var salary by remember { mutableStateOf(calculation.salary.toString()) }
@@ -629,14 +692,29 @@ fun EditCalculationDialog(
     var holidayHours by remember { mutableStateOf(calculation.holidayHours.toString()) }
     var taxRate by remember { mutableStateOf(calculation.taxRate) }
     
+    // Новые состояния для сверхурочных
+    var overtimeEnabled by remember { mutableStateOf(calculation.overtimeHoursTotal > 0.0) }
+    var overtimeTotal by remember { mutableStateOf(calculation.overtimeHoursTotal.toString()) }
+    var overtime05 by remember { mutableStateOf(calculation.overtimeHours05.toString()) }
+    var overtime10 by remember { mutableStateOf(calculation.overtimeHours10.toString()) }
+    
     // Валидация часов
     val monthlyHoursValue = monthlyHours.toDoubleOrNull() ?: 0.0
     val nightHoursValue = nightHours.toDoubleOrNull() ?: 0.0
     val holidayHoursValue = holidayHours.toDoubleOrNull() ?: 0.0
     
-    val isNightHoursValid = nightHours.isEmpty() || nightHoursValue <= monthlyHoursValue
-    val isHolidayHoursValid = holidayHours.isEmpty() || holidayHoursValue <= monthlyHoursValue
-    val isTotalHoursValid = (nightHoursValue + holidayHoursValue) <= monthlyHoursValue
+    // Учитываем настройку превышения часов и сверхурочные
+    val localAllowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours || overtimeEnabled
+    
+    val isNightHoursValid = nightHours.isEmpty() || nightHoursValue <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+    val isHolidayHoursValid = holidayHours.isEmpty() || holidayHoursValue <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+    val isTotalHoursValid = (nightHoursValue + holidayHoursValue) <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+    
+    // Валидация сверхурочных
+    val overtimeTotalValue = overtimeTotal.toDoubleOrNull() ?: 0.0
+    val overtime05Value = overtime05.toDoubleOrNull() ?: 0.0
+    val overtime10Value = overtime10.toDoubleOrNull() ?: 0.0
+    val isOvertimeValid = overtime05Value + overtime10Value <= overtimeTotalValue
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -751,14 +829,22 @@ fun EditCalculationDialog(
                     onValueChange = { 
                         val newValue = com.depotect.czp.utils.filterNumericInput(it, 999.0)
                         val newValueDouble = newValue.toDoubleOrNull() ?: 0.0
-                        if (newValue.isEmpty() || newValueDouble <= monthlyHoursValue) {
+                        if (localAllowSpecialHoursExceedWorkHours) {
                             nightHours = newValue
+                        } else {
+                            if (newValue.isEmpty() || newValueDouble <= monthlyHoursValue) {
+                                nightHours = newValue
+                            }
                         }
                     },
                     leadingIcon = Icons.Default.DarkMode,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     placeholder = "Например: 71",
-                    hint = "Часы работы с 22:00 до 06:00 (коэффициент 0.4). Максимум: ${monthlyHoursValue.toInt()}ч",
+                    hint = if (localAllowSpecialHoursExceedWorkHours) {
+                        "Часы работы с 22:00 до 06:00 (коэффициент 0.4)"
+                    } else {
+                        "Часы работы с 22:00 до 06:00 (коэффициент 0.4). Максимум: ${monthlyHoursValue.toInt()}ч"
+                    },
                     isValid = isNightHoursValid
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -770,19 +856,79 @@ fun EditCalculationDialog(
                         val newValue = com.depotect.czp.utils.filterNumericInput(it, 999.0)
                         val newValueDouble = newValue.toDoubleOrNull() ?: 0.0
                         val totalSpecialHours = nightHoursValue + newValueDouble
-                        if (newValue.isEmpty() || totalSpecialHours <= monthlyHoursValue) {
+                        if (localAllowSpecialHoursExceedWorkHours) {
                             holidayHours = newValue
+                        } else {
+                            if (newValue.isEmpty() || totalSpecialHours <= monthlyHoursValue) {
+                                holidayHours = newValue
+                            }
                         }
                     },
                     leadingIcon = Icons.Default.Celebration,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     placeholder = "Например: 11",
-                    hint = "Часы работы в праздничные дни. Максимум: ${(monthlyHoursValue - nightHoursValue).toInt()}ч",
+                    hint = if (localAllowSpecialHoursExceedWorkHours) {
+                        "Часы работы в праздничные дни"
+                    } else {
+                        "Часы работы в праздничные дни. Максимум: ${(monthlyHoursValue - nightHoursValue).toInt()}ч"
+                    },
                     isValid = isHolidayHoursValid && isTotalHoursValid
                 )
                 
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Секция сверхурочных
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = overtimeEnabled, onCheckedChange = { overtimeEnabled = it })
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Учитывать сверхурочные", style = MaterialTheme.typography.bodyLarge)
+                }
+                if (overtimeEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    com.depotect.czp.ui.components.InputFieldWithHint(
+                        label = "Всего сверхурочных часов",
+                        value = overtimeTotal,
+                        onValueChange = { overtimeTotal = com.depotect.czp.utils.filterNumericInput(it, 999.0) },
+                        leadingIcon = Icons.Default.Timer,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        placeholder = "Например: 10",
+                        hint = "Все часы сверх нормы за месяц",
+                        isValid = overtimeTotal.isEmpty() || overtimeTotal.toDoubleOrNull() != null
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    com.depotect.czp.ui.components.InputFieldWithHint(
+                        label = "Из них с доплатой 0.5",
+                        value = overtime05,
+                        onValueChange = { overtime05 = com.depotect.czp.utils.filterNumericInput(it, 999.0) },
+                        leadingIcon = Icons.Default.Timer,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        placeholder = "Например: 4",
+                        hint = "Первые 2 часа каждого дня",
+                        isValid = overtime05.isEmpty() || overtime05.toDoubleOrNull() != null
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    com.depotect.czp.ui.components.InputFieldWithHint(
+                        label = "Из них с доплатой 1.0",
+                        value = overtime10,
+                        onValueChange = { overtime10 = com.depotect.czp.utils.filterNumericInput(it, 999.0) },
+                        leadingIcon = Icons.Default.Timer,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        placeholder = "Например: 2",
+                        hint = "Все часы сверх первых двух в день",
+                        isValid = overtime10.isEmpty() || overtime10.toDoubleOrNull() != null
+                    )
+                    if (!isOvertimeValid) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Сумма часов с доплатой 0.5 и 1.0 не может превышать общее количество сверхурочных!",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                
                 // Предупреждение о превышении часов
-                if (!isTotalHoursValid && monthlyHours.isNotEmpty() && (nightHours.isNotEmpty() || holidayHours.isNotEmpty())) {
+                if (!isTotalHoursValid && !localAllowSpecialHoursExceedWorkHours && monthlyHours.isNotEmpty() && (nightHours.isNotEmpty() || holidayHours.isNotEmpty())) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -829,6 +975,9 @@ fun EditCalculationDialog(
                         val monthlyHoursAmount = monthlyHours.toDoubleOrNull() ?: 0.0
                         val nightHoursAmount = nightHours.toDoubleOrNull() ?: 0.0
                         val holidayHoursAmount = holidayHours.toDoubleOrNull() ?: 0.0
+                        val overtimeTotalAmount = if (overtimeEnabled) overtimeTotal.toDoubleOrNull() ?: 0.0 else 0.0
+                        val overtime05Amount = if (overtimeEnabled) overtime05.toDoubleOrNull() ?: 0.0 else 0.0
+                        val overtime10Amount = if (overtimeEnabled) overtime10.toDoubleOrNull() ?: 0.0 else 0.0
                         
                         val hourlyRate = if (hours > 0) (salaryAmount * 3) / hours else 0.0
                         val tax = (hourlyRate * taxRate.toDouble() / 100.0)
@@ -838,13 +987,19 @@ fun EditCalculationDialog(
                         val regularSalaryGross = monthlyHoursAmount * hourlyRate
                         val nightSalaryGross = nightHoursAmount * hourlyRate * 0.4
                         val holidaySalaryGross = holidayHoursAmount * hourlyRate
-                        val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross
+                        val overtimePayBase = overtimeTotalAmount * hourlyRate
+                        val overtimePay05 = overtime05Amount * hourlyRate * 0.5
+                        val overtimePay10 = overtime10Amount * hourlyRate * 1.0
+                        val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross + overtimePayBase + overtimePay05 + overtimePay10
                         
                         // Расчеты в "чистых" деньгах
                         val regularSalary = monthlyHoursAmount * netHourlyRate
                         val nightSalary = nightHoursAmount * netHourlyRate * 0.4
                         val holidaySalary = holidayHoursAmount * netHourlyRate
-                        val totalSalary = regularSalary + nightSalary + holidaySalary
+                        val overtimePayBaseNet = overtimeTotalAmount * netHourlyRate
+                        val overtimePay05Net = overtime05Amount * netHourlyRate * 0.5
+                        val overtimePay10Net = overtime10Amount * netHourlyRate * 1.0
+                        val totalSalary = regularSalary + nightSalary + holidaySalary + overtimePayBaseNet + overtimePay05Net + overtimePay10Net
                         
                         // Расчет уплаченных налогов (разность между "грязной" и "чистой" зарплатой)
                         val totalTaxes = grossSalary - totalSalary
@@ -863,14 +1018,20 @@ fun EditCalculationDialog(
                             holidaySalary = holidaySalary,
                             totalSalary = totalSalary,
                             grossSalary = grossSalary,
-                            totalTaxes = totalTaxes
+                            totalTaxes = totalTaxes,
+                            overtimeHoursTotal = overtimeTotalAmount,
+                            overtimeHours05 = overtime05Amount,
+                            overtimeHours10 = overtime10Amount,
+                            overtimePayBase = overtimePayBaseNet,
+                            overtimePay05 = overtimePay05Net,
+                            overtimePay10 = overtimePay10Net
                         )
                         
                         onSave(updatedCalculation)
                     },
                     enabled = quarterlyHours.isNotEmpty() && salary.isNotEmpty() &&
                             monthlyHours.isNotEmpty() && nightHours.isNotEmpty() && holidayHours.isNotEmpty() &&
-                            isTotalHoursValid
+                            isTotalHoursValid && (!overtimeEnabled || (overtimeTotal.isNotEmpty() && isOvertimeValid))
                 ) {
                     Text("Сохранить")
                 }
@@ -942,6 +1103,13 @@ fun AnalyticsCardsSettingsDialog(
                         color = MaterialTheme.colorScheme.tertiary
                     ),
                     CardSetting(
+                        key = "overtime",
+                        title = "Сверхурочные",
+                        description = "Статистика по сверхурочным часам и выплатам",
+                        icon = Icons.Default.Timer,
+                        color = MaterialTheme.colorScheme.primary
+                    ),
+                    CardSetting(
                         key = "top_months",
                         title = "Топ месяцев",
                         description = "Лучший и худший месяц по зарплате",
@@ -984,7 +1152,6 @@ fun AnalyticsCardsSettingsDialog(
                         isEnabled = cardSettings[card.key] ?: true,
                         onToggle = { onCardSettingChange(card.key, it) }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         },
@@ -1024,15 +1191,15 @@ fun CardSettingItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(300)),
-        shape = RoundedCornerShape(16.dp),
+            .padding(vertical = 3.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isEnabled) 
-                card.color.copy(alpha = 0.08f) 
-            else 
-                MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        elevation = CardDefaults.cardElevation(if (isEnabled) 4.dp else 2.dp)
+        elevation = CardDefaults.cardElevation(1.dp),
+        border = if (isEnabled) {
+            androidx.compose.foundation.BorderStroke(1.dp, card.color.copy(alpha = 0.3f))
+        } else null
     ) {
         Row(
             modifier = Modifier
@@ -1045,8 +1212,8 @@ fun CardSettingItem(
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        color = if (isEnabled) card.color else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f),
-                        shape = RoundedCornerShape(12.dp)
+                        color = if (isEnabled) card.color else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -1072,8 +1239,9 @@ fun CardSettingItem(
                 )
                 Text(
                     text = card.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
                 )
             }
             
@@ -1083,11 +1251,12 @@ fun CardSettingItem(
             Switch(
                 checked = isEnabled,
                 onCheckedChange = onToggle,
+                modifier = Modifier.scale(0.95f),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = card.color,
-                    checkedTrackColor = card.color.copy(alpha = 0.3f),
+                    checkedTrackColor = card.color.copy(alpha = 0.2f),
                     uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    uncheckedTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
             )
         }

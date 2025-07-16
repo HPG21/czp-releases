@@ -35,7 +35,8 @@ fun CalculatorScreen(
     baseSalary: String,
     baseSalaryEnabled: Boolean,
     onSaveCalculation: (SalaryCalculation) -> Unit,
-    history: List<SalaryCalculation>,
+    history: List<SalaryCalculation> = emptyList(),
+    allowSpecialHoursExceedWorkHours: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var quarterlyHours by remember { mutableStateOf("") }
@@ -57,15 +58,28 @@ fun CalculatorScreen(
     val focusMonthly = remember { FocusRequester() }
     val focusNight = remember { FocusRequester() }
     val focusHoliday = remember { FocusRequester() }
+    var overtimeEnabled by remember { mutableStateOf(false) }
+    var overtimeTotal by remember { mutableStateOf("") }
+    var overtime05 by remember { mutableStateOf("") }
+    var overtime10 by remember { mutableStateOf("") }
+    var holidayEnabled by remember { mutableStateOf(false) }
     
     // Валидация часов
     val monthlyHoursValue = monthlyHours.toDoubleOrNull() ?: 0.0
     val nightHoursValue = nightHours.toDoubleOrNull() ?: 0.0
     val holidayHoursValue = holidayHours.toDoubleOrNull() ?: 0.0
-    
-    val isNightHoursValid = nightHours.isEmpty() || nightHoursValue <= monthlyHoursValue
-    val isHolidayHoursValid = holidayHours.isEmpty() || holidayHoursValue <= monthlyHoursValue
-    val isTotalHoursValid = (nightHoursValue + holidayHoursValue) <= monthlyHoursValue
+
+    // Новый флаг: если включены сверхурочные, всегда разрешаем превышение
+    val localAllowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours || overtimeEnabled
+
+    val isNightHoursValid = nightHours.isEmpty() || nightHoursValue <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+    val isHolidayHoursValid = holidayHours.isEmpty() || holidayHoursValue <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+    val isTotalHoursValid = (nightHoursValue + holidayHoursValue) <= monthlyHoursValue || localAllowSpecialHoursExceedWorkHours
+
+    val overtimeTotalValue = overtimeTotal.toDoubleOrNull() ?: 0.0
+    val overtime05Value = overtime05.toDoubleOrNull() ?: 0.0
+    val overtime10Value = overtime10.toDoubleOrNull() ?: 0.0
+    val isOvertimeValid = overtime05Value + overtime10Value <= overtimeTotalValue
     
     // Загрузка истории при первом запуске
     LaunchedEffect(Unit) {
@@ -231,42 +245,117 @@ fun CalculatorScreen(
                         InputFieldWithHint(
                             label = "Ночные часы",
                             value = nightHours,
-                            onValueChange = { 
+                            onValueChange = {
                                 val newValue = filterNumericInput(it, 999.0)
                                 val newValueDouble = newValue.toDoubleOrNull() ?: 0.0
-                                if (newValue.isEmpty() || newValueDouble <= monthlyHoursValue) {
+                                if (localAllowSpecialHoursExceedWorkHours) {
                                     nightHours = newValue
+                                } else {
+                                    if (newValue.isEmpty() || newValueDouble <= monthlyHoursValue) {
+                                        nightHours = newValue
+                                    }
                                 }
                             },
                             leadingIcon = Icons.Default.DarkMode,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             placeholder = "Например: 71",
-                            hint = "Часы работы с 22:00 до 06:00 (коэффициент 0.4). Максимум: ${monthlyHoursValue.toInt()}ч",
+                            hint = if (localAllowSpecialHoursExceedWorkHours) {
+                                "Часы работы с 22:00 до 06:00 (коэффициент 0.4)"
+                            } else {
+                                "Часы работы с 22:00 до 06:00 (коэффициент 0.4). Максимум: ${monthlyHoursValue.toInt()}ч"
+                            },
                             isValid = isNightHoursValid,
                             modifier = Modifier.focusRequester(focusNight)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        InputFieldWithHint(
-                            label = "Праздничные часы",
-                            value = holidayHours,
-                            onValueChange = { 
-                                val newValue = filterNumericInput(it, 999.0)
-                                val newValueDouble = newValue.toDoubleOrNull() ?: 0.0
-                                val totalSpecialHours = nightHoursValue + newValueDouble
-                                if (newValue.isEmpty() || totalSpecialHours <= monthlyHoursValue) {
-                                    holidayHours = newValue
-                                }
-                            },
-                            leadingIcon = Icons.Default.Celebration,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            placeholder = "Например: 11",
-                            hint = "Часы работы в праздничные дни. Максимум: ${(monthlyHoursValue - nightHoursValue).toInt()}ч",
-                            isValid = isHolidayHoursValid && isTotalHoursValid,
-                            modifier = Modifier.focusRequester(focusHoliday)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(checked = holidayEnabled, onCheckedChange = { holidayEnabled = it })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Учитывать праздничные часы", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (holidayEnabled) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            InputFieldWithHint(
+                                label = "Праздничные часы",
+                                value = holidayHours,
+                                onValueChange = {
+                                    val newValue = filterNumericInput(it, 999.0)
+                                    val newValueDouble = newValue.toDoubleOrNull() ?: 0.0
+                                    val totalSpecialHours = nightHoursValue + newValueDouble
+                                    if (localAllowSpecialHoursExceedWorkHours) {
+                                        holidayHours = newValue
+                                    } else {
+                                        if (newValue.isEmpty() || totalSpecialHours <= monthlyHoursValue) {
+                                            holidayHours = newValue
+                                        }
+                                    }
+                                },
+                                leadingIcon = Icons.Default.Celebration,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                placeholder = "Например: 11",
+                                hint = if (localAllowSpecialHoursExceedWorkHours) {
+                                    "Часы работы в праздничные дни"
+                                } else {
+                                    "Часы работы в праздничные дни. Максимум: ${(monthlyHoursValue - nightHoursValue).toInt()}ч"
+                                },
+                                isValid = isHolidayHoursValid && isTotalHoursValid,
+                                modifier = Modifier.focusRequester(focusHoliday)
+                            )
+                        } else {
+                            holidayHours = "0"
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(checked = overtimeEnabled, onCheckedChange = { overtimeEnabled = it })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Учитывать сверхурочные", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        if (overtimeEnabled) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InputFieldWithHint(
+                                label = "Всего сверхурочных часов",
+                                value = overtimeTotal,
+                                onValueChange = { overtimeTotal = filterNumericInput(it, 999.0) },
+                                leadingIcon = Icons.Default.Timer,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                placeholder = "Например: 10",
+                                hint = "Все часы сверх нормы за месяц",
+                                isValid = overtimeTotal.isEmpty() || overtimeTotal.toDoubleOrNull() != null
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InputFieldWithHint(
+                                label = "Из них с доплатой 0.5",
+                                value = overtime05,
+                                onValueChange = { overtime05 = filterNumericInput(it, 999.0) },
+                                leadingIcon = Icons.Default.Timer,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                placeholder = "Например: 4",
+                                hint = "Первые 2 часа каждого дня",
+                                isValid = overtime05.isEmpty() || overtime05.toDoubleOrNull() != null
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InputFieldWithHint(
+                                label = "Из них с доплатой 1.0",
+                                value = overtime10,
+                                onValueChange = { overtime10 = filterNumericInput(it, 999.0) },
+                                leadingIcon = Icons.Default.Timer,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                placeholder = "Например: 2",
+                                hint = "Все часы сверх первых двух в день",
+                                isValid = overtime10.isEmpty() || overtime10.toDoubleOrNull() != null
+                            )
+                            if (!isOvertimeValid) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Сумма часов с доплатой 0.5 и 1.0 не может превышать общее количество сверхурочных!",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                         
                         // Предупреждение о превышении часов
-                        if (!isTotalHoursValid && monthlyHours.isNotEmpty() && (nightHours.isNotEmpty() || holidayHours.isNotEmpty())) {
+                        if (!isTotalHoursValid && !localAllowSpecialHoursExceedWorkHours && monthlyHours.isNotEmpty() && (nightHours.isNotEmpty() || holidayHours.isNotEmpty())) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -303,7 +392,7 @@ fun CalculatorScreen(
             AnimatedVisibility(
                 visible = quarterlyHours.isNotEmpty() && salary.isNotEmpty() &&
                         monthlyHours.isNotEmpty() && nightHours.isNotEmpty() && holidayHours.isNotEmpty() &&
-                        isTotalHoursValid,
+                        isTotalHoursValid && (!overtimeEnabled || (overtimeTotal.isNotEmpty() && isOvertimeValid)),
                 enter = fadeIn(animationSpec = tween(1000)) + expandVertically(
                     animationSpec = tween(1000, easing = FastOutSlowInEasing)
                 ),
@@ -316,7 +405,10 @@ fun CalculatorScreen(
                 val salaryAmount = salary.toDoubleOrNull() ?: 0.0
                 val monthlyHoursAmount = monthlyHours.toDoubleOrNull() ?: 0.0
                 val nightHoursAmount = nightHours.toDoubleOrNull() ?: 0.0
-                val holidayHoursAmount = holidayHours.toDoubleOrNull() ?: 0.0
+                val holidayHoursAmount = if (holidayEnabled) holidayHours.toDoubleOrNull() ?: 0.0 else 0.0
+                val overtimeTotalAmount = if (overtimeEnabled) overtimeTotal.toDoubleOrNull() ?: 0.0 else 0.0
+                val overtime05Amount = if (overtimeEnabled) overtime05.toDoubleOrNull() ?: 0.0 else 0.0
+                val overtime10Amount = if (overtimeEnabled) overtime10.toDoubleOrNull() ?: 0.0 else 0.0
 
                 val hourlyRate = if (hours > 0) (salaryAmount * 3) / hours else 0.0
                 val tax = (hourlyRate * taxRate.toDouble() / 100.0)
@@ -326,13 +418,20 @@ fun CalculatorScreen(
                 val regularSalaryGross = monthlyHoursAmount * hourlyRate
                 val nightSalaryGross = nightHoursAmount * hourlyRate * 0.4
                 val holidaySalaryGross = holidayHoursAmount * hourlyRate
-                val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross
+                // Сверхурочные
+                val overtimePayBase = overtimeTotalAmount * hourlyRate
+                val overtimePay05 = overtime05Amount * hourlyRate * 0.5
+                val overtimePay10 = overtime10Amount * hourlyRate * 1.0
+                val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross + overtimePayBase + overtimePay05 + overtimePay10
 
                 // Расчеты в "чистых" деньгах
                 val regularSalary = monthlyHoursAmount * netHourlyRate
                 val nightSalary = nightHoursAmount * netHourlyRate * 0.4
                 val holidaySalary = holidayHoursAmount * netHourlyRate
-                val totalSalary = regularSalary + nightSalary + holidaySalary
+                val overtimePayBaseNet = overtimeTotalAmount * netHourlyRate
+                val overtimePay05Net = overtime05Amount * netHourlyRate * 0.5
+                val overtimePay10Net = overtime10Amount * netHourlyRate * 1.0
+                val totalSalary = regularSalary + nightSalary + holidaySalary + overtimePayBaseNet + overtimePay05Net + overtimePay10Net
 
                 // Расчет уплаченных налогов (разность между "грязной" и "чистой" зарплатой)
                 val totalTaxes = grossSalary - totalSalary
@@ -351,7 +450,13 @@ fun CalculatorScreen(
                         holidaySalary = holidaySalary,
                         totalSalary = totalSalary,
                         grossSalary = grossSalary,
-                        taxRate = taxRate
+                        taxRate = taxRate,
+                        overtimeHoursTotal = overtimeTotalAmount,
+                        overtimeHours05 = overtime05Amount,
+                        overtimeHours10 = overtime10Amount,
+                        overtimePayBase = overtimePayBaseNet,
+                        overtimePay05 = overtimePay05Net,
+                        overtimePay10 = overtimePay10Net
                     )
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -397,26 +502,28 @@ fun CalculatorScreen(
                         val salaryAmount = salary.toDoubleOrNull() ?: 0.0
                         val monthlyHoursAmount = monthlyHours.toDoubleOrNull() ?: 0.0
                         val nightHoursAmount = nightHours.toDoubleOrNull() ?: 0.0
-                        val holidayHoursAmount = holidayHours.toDoubleOrNull() ?: 0.0
+                        val holidayHoursAmount = if (holidayEnabled) holidayHours.toDoubleOrNull() ?: 0.0 else 0.0
+                        val overtimeTotalAmount = if (overtimeEnabled) overtimeTotal.toDoubleOrNull() ?: 0.0 else 0.0
+                        val overtime05Amount = if (overtimeEnabled) overtime05.toDoubleOrNull() ?: 0.0 else 0.0
+                        val overtime10Amount = if (overtimeEnabled) overtime10.toDoubleOrNull() ?: 0.0 else 0.0
                         val hourlyRate = if (hours > 0) (salaryAmount * 3) / hours else 0.0
                         val tax = (hourlyRate * taxRate.toDouble() / 100.0)
                         val netHourlyRate = hourlyRate - tax
-                        
-                        // Расчеты по типам смен (в "грязных" деньгах)
                         val regularSalaryGross = monthlyHoursAmount * hourlyRate
                         val nightSalaryGross = nightHoursAmount * hourlyRate * 0.4
                         val holidaySalaryGross = holidayHoursAmount * hourlyRate
-                        val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross
-                        
-                        // Расчеты в "чистых" деньгах
+                        val overtimePayBase = overtimeTotalAmount * hourlyRate
+                        val overtimePay05 = overtime05Amount * hourlyRate * 0.5
+                        val overtimePay10 = overtime10Amount * hourlyRate * 1.0
+                        val grossSalary = regularSalaryGross + nightSalaryGross + holidaySalaryGross + overtimePayBase + overtimePay05 + overtimePay10
                         val regularSalary = monthlyHoursAmount * netHourlyRate
                         val nightSalary = nightHoursAmount * netHourlyRate * 0.4
                         val holidaySalary = holidayHoursAmount * netHourlyRate
-                        val totalSalary = regularSalary + nightSalary + holidaySalary
-                        
-                        // Расчет уплаченных налогов (разность между "грязной" и "чистой" зарплатой)
+                        val overtimePayBaseNet = overtimeTotalAmount * netHourlyRate
+                        val overtimePay05Net = overtime05Amount * netHourlyRate * 0.5
+                        val overtimePay10Net = overtime10Amount * netHourlyRate * 1.0
+                        val totalSalary = regularSalary + nightSalary + holidaySalary + overtimePayBaseNet + overtimePay05Net + overtimePay10Net
                         val totalTaxes = grossSalary - totalSalary
-                        
                         val calculation = SalaryCalculation(
                             date = date,
                             quarterlyHours = hours,
@@ -432,7 +539,13 @@ fun CalculatorScreen(
                             holidaySalary = holidaySalary,
                             totalSalary = totalSalary,
                             grossSalary = grossSalary,
-                            totalTaxes = totalTaxes
+                            totalTaxes = totalTaxes,
+                            overtimeHoursTotal = overtimeTotalAmount,
+                            overtimeHours05 = overtime05Amount,
+                            overtimeHours10 = overtime10Amount,
+                            overtimePayBase = overtimePayBaseNet,
+                            overtimePay05 = overtimePay05Net,
+                            overtimePay10 = overtimePay10Net
                         )
                         
                         // Сохраняем расчет (проверка на существование уже в DatePickerDialog)

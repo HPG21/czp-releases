@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.depotect.czp.models.SalaryCalculation
@@ -37,6 +38,7 @@ fun HistoryScreen(
     showQuarters: Boolean,
     onDeleteCalculation: (SalaryCalculation) -> Unit,
     onUpdateCalculation: (SalaryCalculation) -> Unit,
+    allowSpecialHoursExceedWorkHours: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var selectedCalculation by remember { mutableStateOf<SalaryCalculation?>(null) }
@@ -128,7 +130,6 @@ fun HistoryScreen(
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AnimatedVisibility(
@@ -136,12 +137,16 @@ fun HistoryScreen(
                     enter = fadeIn(animationSpec = tween(300)) + expandVertically(),
                     exit = fadeOut(animationSpec = tween(300)) + shrinkVertically()
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
                             text = "История расчетов",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         if (calculations.size > 20) {
                             Spacer(modifier = Modifier.height(4.dp))
@@ -154,12 +159,14 @@ fun HistoryScreen(
                     }
                 }
                 IconButton(
-                    onClick = { showFilters = !showFilters }
+                    onClick = { showFilters = !showFilters },
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
                         contentDescription = "Фильтры",
-                        tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -357,7 +364,8 @@ fun HistoryScreen(
             onDelete = {
                 onDeleteCalculation(calculation)
                 editingCalculation = null
-            }
+            },
+            allowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours
         )
     }
 }

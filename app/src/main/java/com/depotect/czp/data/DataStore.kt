@@ -276,6 +276,29 @@ suspend fun loadShowQuarters(context: Context): Boolean {
     }
 }
 
+suspend fun saveAllowSpecialHoursExceedWorkHours(context: Context, allow: Boolean) {
+    try {
+        context.dataStore.edit { prefs ->
+            prefs[Preferences.ALLOW_SPECIAL_HOURS_EXCEED_WORK_HOURS_KEY] = if (allow) "true" else "false"
+        }
+        android.util.Log.d("CZP", "Allow special hours exceed work hours saved: $allow")
+    } catch (e: Exception) {
+        android.util.Log.e("CZP", "Error saving allow special hours exceed work hours", e)
+    }
+}
+
+suspend fun loadAllowSpecialHoursExceedWorkHours(context: Context): Boolean {
+    return try {
+        val prefs = context.dataStore.data.first()
+        val result = prefs[Preferences.ALLOW_SPECIAL_HOURS_EXCEED_WORK_HOURS_KEY] == "true"
+        android.util.Log.d("CZP", "Allow special hours exceed work hours loaded: $result")
+        result
+    } catch (e: Exception) {
+        android.util.Log.e("CZP", "Error loading allow special hours exceed work hours", e)
+        false // По умолчанию выключено
+    }
+}
+
 // Настройки карточек аналитики
 object AnalyticsCardsKeys {
     val KEY_METRICS = booleanPreferencesKey("analytics_key_metrics")
@@ -286,6 +309,7 @@ object AnalyticsCardsKeys {
     val YEAR_COMPARISON = booleanPreferencesKey("analytics_year_comparison")
     val SALARY_GROWTH = booleanPreferencesKey("analytics_salary_growth")
     val SALARY_RAISE = booleanPreferencesKey("analytics_salary_raise")
+    val OVERTIME = booleanPreferencesKey("analytics_overtime") // Новый ключ
 }
 
 suspend fun saveAnalyticsCardSettings(
@@ -297,7 +321,8 @@ suspend fun saveAnalyticsCardSettings(
     hourlyEfficiency: Boolean,
     yearComparison: Boolean,
     salaryGrowth: Boolean,
-    salaryRaise: Boolean
+    salaryRaise: Boolean,
+    overtime: Boolean // Новый параметр
 ) {
     context.dataStore.edit { preferences ->
         preferences[AnalyticsCardsKeys.KEY_METRICS] = keyMetrics
@@ -308,6 +333,7 @@ suspend fun saveAnalyticsCardSettings(
         preferences[AnalyticsCardsKeys.YEAR_COMPARISON] = yearComparison
         preferences[AnalyticsCardsKeys.SALARY_GROWTH] = salaryGrowth
         preferences[AnalyticsCardsKeys.SALARY_RAISE] = salaryRaise
+        preferences[AnalyticsCardsKeys.OVERTIME] = overtime // Сохраняем
     }
 }
 
@@ -321,6 +347,7 @@ suspend fun loadAnalyticsCardSettings(context: Context): Map<String, Boolean> {
         "hourly_efficiency" to (preferences[AnalyticsCardsKeys.HOURLY_EFFICIENCY] ?: true),
         "year_comparison" to (preferences[AnalyticsCardsKeys.YEAR_COMPARISON] ?: true),
         "salary_growth" to (preferences[AnalyticsCardsKeys.SALARY_GROWTH] ?: true),
-        "salary_raise" to (preferences[AnalyticsCardsKeys.SALARY_RAISE] ?: true)
+        "salary_raise" to (preferences[AnalyticsCardsKeys.SALARY_RAISE] ?: true),
+        "overtime" to (preferences[AnalyticsCardsKeys.OVERTIME] ?: true) // Загружаем
     )
 } 

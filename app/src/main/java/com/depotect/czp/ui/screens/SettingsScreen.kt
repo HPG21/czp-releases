@@ -34,6 +34,8 @@ fun SettingsScreen(
     onCheckUpdates: () -> Unit,
     calculationsCount: Int = 0,
     onClearAllHistory: () -> Unit,
+    allowSpecialHoursExceedWorkHours: Boolean,
+    onAllowSpecialHoursExceedWorkHoursChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -336,6 +338,52 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                
+                // Разделитель
+                Spacer(modifier = Modifier.height(16.dp))
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(animationSpec = tween(500)) + expandHorizontally(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    )
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        thickness = 1.dp
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Новый переключатель
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Разрешить превышение часов",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Можно считать, даже если ночных или праздничных часов больше, чем рабочих",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = allowSpecialHoursExceedWorkHours,
+                        onCheckedChange = onAllowSpecialHoursExceedWorkHoursChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
         
@@ -488,7 +536,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "CalzPay v1.10.2",
+                    text = "CalzPay v1.11.0",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.depotect.czp.models.SalaryCalculation
@@ -100,32 +101,40 @@ fun AnalyticsScreen(
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "Аналитика зарплаты",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(
-                            onClick = { showCardSettings = true }
+                            onClick = { showCardSettings = true },
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Dashboard,
                                 contentDescription = "Настройка карточек",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = if (showCardSettings) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         IconButton(
-                            onClick = { showFilters = !showFilters }
+                            onClick = { showFilters = !showFilters },
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.FilterList,
                                 contentDescription = "Фильтры",
-                                tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (showFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -184,6 +193,10 @@ fun AnalyticsScreen(
             
             if (cardSettings["salary_raise"] == true) {
                 SalaryRaiseCard(filteredCalculations)
+            }
+            
+            if (cardSettings["overtime"] == true) {
+                OvertimeAnalyticsCard(filteredCalculations)
             }
             
             // Если все карточки отключены, показываем сообщение
@@ -1240,6 +1253,95 @@ fun SalaryRaiseCard(calculations: List<SalaryCalculation>) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun OvertimeAnalyticsCard(calculations: List<SalaryCalculation>) {
+    val totalOvertime = calculations.sumOf { it.overtimeHoursTotal }
+    val avgOvertime = if (calculations.isNotEmpty()) totalOvertime / calculations.size else 0.0
+    val maxOvertime = calculations.maxOfOrNull { it.overtimeHoursTotal } ?: 0.0
+    val totalOvertimePay = calculations.sumOf { it.overtimePayBase + it.overtimePay05 + it.overtimePay10 }
+    val avgOvertimePay = if (calculations.isNotEmpty()) totalOvertimePay / calculations.size else 0.0
+    val maxOvertimePay = calculations.maxOfOrNull { it.overtimePayBase + it.overtimePay05 + it.overtimePay10 } ?: 0.0
+    val totalSalary = calculations.sumOf { it.totalSalary }
+    val overtimePercent = if (totalSalary > 0) (totalOvertimePay / totalSalary) * 100 else 0.0
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timer,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Сверхурочные",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Всего часов",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${formatSmart(totalOvertime)}ч",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Всего выплачено",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = String.format(Locale.getDefault(), "%,.0f ₽", totalOvertimePay),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Максимум за месяц: ${formatSmart(maxOvertime)}ч, выплата: ${String.format(Locale.getDefault(), "%,.0f ₽", maxOvertimePay)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AccentOrange,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Доля сверхурочных в зарплате: ${String.format(Locale.getDefault(), "%.1f", overtimePercent)}%",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

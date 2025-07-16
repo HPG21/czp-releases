@@ -57,42 +57,39 @@ fun MainApp() {
     var isManualUpdateCheck by remember { mutableStateOf(false) }
     val updateManager = remember { UpdateManager(context) }
 
+    // Состояние для разрешения расчёта при превышении ночных/праздничных часов
+    var allowSpecialHoursExceedWorkHours by remember { mutableStateOf(false) }
+
     // Загрузка истории и настроек при первом запуске
     LaunchedEffect(Unit) {
         try {
             if (!isHistoryLoaded) {
-                val loadedHistory = loadHistory(context)
-                savedCalculations = loadedHistory
+                savedCalculations = loadHistory(context)
                 isHistoryLoaded = true
-                android.util.Log.d("CZP", "Initial history load completed: ${loadedHistory.size} items")
+                android.util.Log.d("CZP", "History loaded: ${savedCalculations.size} items")
             }
+            
             if (!isSettingsLoaded) {
-                val loadedTaxRate = loadTaxRate(context)
-                val loadedTheme = loadThemeMode(context)
-                val loadedBaseSalary = loadBaseSalary(context)
-                val loadedBaseSalaryEnabled = loadBaseSalaryEnabled(context)
-                val loadedShowQuarters = loadShowQuarters(context)
-                taxRate = loadedTaxRate
-                currentTheme = loadedTheme
-                baseSalary = loadedBaseSalary
-                baseSalaryEnabled = loadedBaseSalaryEnabled
-                showQuarters = loadedShowQuarters
+                taxRate = loadTaxRate(context)
+                currentTheme = loadThemeMode(context)
+                baseSalary = loadBaseSalary(context)
+                baseSalaryEnabled = loadBaseSalaryEnabled(context)
+                showQuarters = loadShowQuarters(context)
+                allowSpecialHoursExceedWorkHours = loadAllowSpecialHoursExceedWorkHours(context)
                 isSettingsLoaded = true
-                android.util.Log.d("CZP", "Initial settings load completed: taxRate=$loadedTaxRate, theme=${loadedTheme.name}, baseSalary=$loadedBaseSalary, baseSalaryEnabled=$loadedBaseSalaryEnabled, showQuarters=$loadedShowQuarters")
+                android.util.Log.d("CZP", "Settings loaded: taxRate=$taxRate, theme=${currentTheme.name}, baseSalary=$baseSalary, baseSalaryEnabled=$baseSalaryEnabled, showQuarters=$showQuarters, allowSpecialHoursExceedWorkHours=$allowSpecialHoursExceedWorkHours")
             }
-            if (!isCardSettingsLoaded) {
-                val loadedCardSettings = loadAnalyticsCardSettings(context)
-                analyticsCardSettings = loadedCardSettings
-                isCardSettingsLoaded = true
-                android.util.Log.d("CZP", "Initial card settings load completed: $loadedCardSettings")
-            }
+            
             if (!isFirstLaunchChecked) {
-                val isFirst = isFirstLaunch(context)
-                if (isFirst) {
-                    showDisclaimer = true
-                }
+                showDisclaimer = isFirstLaunch(context)
                 isFirstLaunchChecked = true
-                android.util.Log.d("CZP", "First launch check completed: $isFirst")
+                android.util.Log.d("CZP", "First launch check completed: showDisclaimer=$showDisclaimer")
+            }
+            
+            if (!isCardSettingsLoaded) {
+                analyticsCardSettings = loadAnalyticsCardSettings(context)
+                isCardSettingsLoaded = true
+                android.util.Log.d("CZP", "Card settings loaded: $analyticsCardSettings")
             }
             
             // Убираем автоматическую проверку обновлений при запуске
@@ -116,7 +113,7 @@ fun MainApp() {
     }
 
     // Сохраняем настройки при изменении
-    LaunchedEffect(taxRate, currentTheme, baseSalary, baseSalaryEnabled, showQuarters) {
+    LaunchedEffect(taxRate, currentTheme, baseSalary, baseSalaryEnabled, showQuarters, allowSpecialHoursExceedWorkHours) {
         if (isSettingsLoaded) {
             try {
                 saveTaxRate(context, taxRate)
@@ -124,7 +121,8 @@ fun MainApp() {
                 saveBaseSalary(context, baseSalary)
                 saveBaseSalaryEnabled(context, baseSalaryEnabled)
                 saveShowQuarters(context, showQuarters)
-                android.util.Log.d("CZP", "Settings auto-saved: taxRate=$taxRate, theme=${currentTheme.name}, baseSalary=$baseSalary, baseSalaryEnabled=$baseSalaryEnabled, showQuarters=$showQuarters")
+                saveAllowSpecialHoursExceedWorkHours(context, allowSpecialHoursExceedWorkHours)
+                android.util.Log.d("CZP", "Settings auto-saved: taxRate=$taxRate, theme=${currentTheme.name}, baseSalary=$baseSalary, baseSalaryEnabled=$baseSalaryEnabled, showQuarters=$showQuarters, allowSpecialHoursExceedWorkHours=$allowSpecialHoursExceedWorkHours")
             } catch (e: Exception) {
                 android.util.Log.e("CZP", "Error auto-saving settings", e)
             }
@@ -144,7 +142,8 @@ fun MainApp() {
                     hourlyEfficiency = analyticsCardSettings["hourly_efficiency"] ?: true,
                     yearComparison = analyticsCardSettings["year_comparison"] ?: true,
                     salaryGrowth = analyticsCardSettings["salary_growth"] ?: true,
-                    salaryRaise = analyticsCardSettings["salary_raise"] ?: true
+                    salaryRaise = analyticsCardSettings["salary_raise"] ?: true,
+                    overtime = analyticsCardSettings["overtime"] ?: true // Новый параметр
                 )
                 android.util.Log.d("CZP", "Card settings auto-saved: $analyticsCardSettings")
             } catch (e: Exception) {
@@ -199,7 +198,13 @@ fun MainApp() {
                             listOf(Screen.Calculator, Screen.History, Screen.Analytics, Screen.Settings).forEach { screen ->
                                 NavigationBarItem(
                                     icon = { Icon(screen.icon, contentDescription = screen.title) },
-                                    label = { Text(screen.title) },
+                                    label = {
+                                        Text(
+                                            screen.title,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    },
                                     selected = currentScreen == screen,
                                     onClick = { currentScreen = screen },
                                     colors = if (!isDarkTheme) NavigationBarItemDefaults.colors(
@@ -246,6 +251,7 @@ fun MainApp() {
                             }
                         },
                         history = savedCalculations,
+                        allowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours,
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding())
                     )
                     Screen.History -> HistoryScreen(
@@ -279,6 +285,7 @@ fun MainApp() {
                                 }
                             }
                         },
+                        allowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours,
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding())
                     )
                     Screen.Analytics -> AnalyticsScreen(
@@ -319,6 +326,8 @@ fun MainApp() {
                                 }
                             }
                         },
+                        allowSpecialHoursExceedWorkHours = allowSpecialHoursExceedWorkHours,
+                        onAllowSpecialHoursExceedWorkHoursChange = { allowSpecialHoursExceedWorkHours = it },
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding())
                     )
                 }
@@ -373,7 +382,8 @@ fun MainApp() {
                         saveBaseSalary(context, baseSalary)
                         saveBaseSalaryEnabled(context, baseSalaryEnabled)
                         saveShowQuarters(context, showQuarters)
-                        android.util.Log.d("CZP", "Final settings save on dispose: taxRate=$taxRate, theme=${currentTheme.name}, baseSalary=$baseSalary, baseSalaryEnabled=$baseSalaryEnabled, showQuarters=$showQuarters")
+                        saveAllowSpecialHoursExceedWorkHours(context, allowSpecialHoursExceedWorkHours)
+                        android.util.Log.d("CZP", "Final settings save on dispose: taxRate=$taxRate, theme=${currentTheme.name}, baseSalary=$baseSalary, baseSalaryEnabled=$baseSalaryEnabled, showQuarters=$showQuarters, allowSpecialHoursExceedWorkHours=$allowSpecialHoursExceedWorkHours")
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("CZP", "Error during final save on dispose", e)

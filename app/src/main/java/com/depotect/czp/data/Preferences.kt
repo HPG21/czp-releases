@@ -11,4 +11,5 @@ object Preferences {
     val BASE_SALARY_KEY = stringPreferencesKey("base_salary")
     val BASE_SALARY_ENABLED_KEY = stringPreferencesKey("base_salary_enabled")
     val SHOW_QUARTERS_KEY = stringPreferencesKey("show_quarters")
+    val ALLOW_SPECIAL_HOURS_EXCEED_WORK_HOURS_KEY = stringPreferencesKey("allow_special_hours_exceed_work_hours")
 } 

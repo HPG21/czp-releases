@@ -12,8 +12,8 @@ android {
         applicationId = "com.depotect.czp"
         minSdk = 27
         targetSdk = 36
-        versionCode = 34
-        versionName = "1.10.2"
+        versionCode = 35
+        versionName = "1.11.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -30,7 +30,13 @@ fun ResultsCard(
     holidaySalary: Double,
     totalSalary: Double,
     grossSalary: Double,
-    taxRate: String
+    taxRate: String,
+    overtimeHoursTotal: Double = 0.0,
+    overtimeHours05: Double = 0.0,
+    overtimeHours10: Double = 0.0,
+    overtimePayBase: Double = 0.0,
+    overtimePay05: Double = 0.0,
+    overtimePay10: Double = 0.0
 ) {
     val cardBg = MaterialTheme.colorScheme.surfaceVariant
     val textColor = MaterialTheme.colorScheme.onSurface
@@ -160,6 +166,73 @@ fun ResultsCard(
                 unit = "₽",
                 textColor = textColor
             )
+            // СЕКЦИЯ СВЕРХУРОЧНЫХ
+            if (overtimeHoursTotal > 0.0) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = "Сверхурочные",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ResultRow(
+                    label = "Всего сверхурочных часов",
+                    value = overtimeHoursTotal,
+                    icon = Icons.Default.Timer,
+                    color = MaterialTheme.colorScheme.primary,
+                    unit = "ч",
+                    textColor = textColor
+                )
+                if (overtimeHours05 > 0.0) {
+                    ResultRow(
+                        label = "Из них с доплатой 0.5",
+                        value = overtimeHours05,
+                        icon = Icons.Default.Timer,
+                        color = AccentOrange,
+                        unit = "ч",
+                        textColor = textColor
+                    )
+                    ResultRow(
+                        label = "Выплата за 0.5 (50%)",
+                        value = overtimePay05,
+                        icon = Icons.Default.Money,
+                        color = AccentOrange,
+                        unit = "₽",
+                        textColor = textColor
+                    )
+                }
+                if (overtimeHours10 > 0.0) {
+                    ResultRow(
+                        label = "Из них с доплатой 1.0",
+                        value = overtimeHours10,
+                        icon = Icons.Default.Timer,
+                        color = SuccessGreen,
+                        unit = "ч",
+                        textColor = textColor
+                    )
+                    ResultRow(
+                        label = "Выплата за 1.0 (100%)",
+                        value = overtimePay10,
+                        icon = Icons.Default.Money,
+                        color = SuccessGreen,
+                        unit = "₽",
+                        textColor = textColor
+                    )
+                }
+                // Базовая выплата за все сверхурочные (без надбавок)
+                ResultRow(
+                    label = "Базовая выплата за сверхурочные",
+                    value = overtimePayBase,
+                    icon = Icons.Default.Money,
+                    color = MaterialTheme.colorScheme.primary,
+                    unit = "₽",
+                    textColor = textColor
+                )
+            }
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 12.dp),
                 color = MaterialTheme.colorScheme.outline

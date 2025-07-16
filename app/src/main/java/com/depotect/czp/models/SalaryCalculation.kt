@@ -21,5 +21,12 @@ data class SalaryCalculation(
     val totalSalary: Double,
     val grossSalary: Double = 0.0, // "Грязная" зарплата (до вычета налогов)
     val totalTaxes: Double = 0.0, // Сумма уплаченных налогов
+    // Новые поля для сверхурочных
+    val overtimeHoursTotal: Double = 0.0,
+    val overtimeHours05: Double = 0.0,
+    val overtimeHours10: Double = 0.0,
+    val overtimePayBase: Double = 0.0,
+    val overtimePay05: Double = 0.0,
+    val overtimePay10: Double = 0.0,
     val timestamp: Long = System.currentTimeMillis()
 ) 
